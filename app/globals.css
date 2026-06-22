@@ -82,7 +82,7 @@ nav {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 120px 55% 80px 48px;
+  padding: 120px 48px 80px;
   overflow: hidden;
   background: var(--white);
 }
@@ -165,16 +165,15 @@ nav {
 /* ─── BUILDING ANIMATION CANVAS ─── */
 #building-stage {
   position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 55%;
+  inset: 0;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
   overflow: hidden;
   background: transparent;
+  z-index: 3;
 }
 
 #vhCanvas {
@@ -820,7 +819,6 @@ footer { background: var(--black); border-top: 1px solid rgba(255,255,255,0.08);
   nav { padding: 0 24px; }
   .nav-links { display: none; }
   #hero { padding: 100px 24px 60px; }
-  #building-stage { display: none; }
   section { padding: 80px 24px; }
   .features-cols { grid-template-columns: 1fr; }
   .feature-col { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }

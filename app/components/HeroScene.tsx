@@ -5,9 +5,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
-const BUILDING_SCALE = 0.1258151;
-const BUILDING_Y = -3.15;
-const BUILDING_ROTATION_Y = -Math.PI / 4;
+const BUILDING_SCALE = 0.18872265;
+const BUILDING_Y = -4.85;
+const BUILDING_ROTATION_Y = -0.48;
 const MODEL_SCALE_BOOST = 1.33;
 
 const IN_SCALES = [
@@ -56,7 +56,7 @@ const OUTPUT_PHASE = (OUT_PATHS.length - 1) * OUTPUT_STAGGER + OUTPUT_TRAVEL;
 const DECONSTRUCT_START = OUTPUT_START + OUTPUT_PHASE;
 const LOOP_DURATION = DECONSTRUCT_START + DECONSTRUCT_DURATION;
 
-const MATERIAL_Y = 1.0;
+const MATERIAL_Y = 0.85;
 
 function easeConstruct(t: number) {
   return t < 0.82 ? t * 0.92 : 0.7544 + 0.2456 * Math.pow((t - 0.82) / 0.18, 1.35);
@@ -113,8 +113,8 @@ function CameraRig() {
   const { camera } = useThree();
 
   useEffect(() => {
-    camera.position.set(0, 8, 18);
-    camera.lookAt(1.2, 0.25, 0);
+    camera.position.set(0, 8.4, 23);
+    camera.lookAt(1.8, -1.25, 0);
     camera.updateProjectionMatrix();
   }, [camera]);
 
@@ -125,8 +125,12 @@ function Building({ loopTime }: { loopTime: number }) {
   const group = useRef<THREE.Group>(null);
   const clipPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, -1, 0), 0), []);
   const clone = usePreparedModel('/models/building.glb');
+  const buildingHeight = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(clone);
+    return box.max.y - box.min.y;
+  }, [clone]);
 
-  const buildingTop = 47.689037 * BUILDING_SCALE;
+  const buildingTop = buildingHeight * BUILDING_SCALE;
   let reveal = 1;
   if (loopTime < CONSTRUCT_DURATION) {
     reveal = easeConstruct(loopTime / CONSTRUCT_DURATION);
@@ -164,7 +168,7 @@ function Building({ loopTime }: { loopTime: number }) {
   return (
     <group
       ref={group}
-      position={[1.9, BUILDING_Y, 0]}
+      position={[6.6, BUILDING_Y, -0.55]}
       rotation={[0, BUILDING_ROTATION_Y, 0]}
       scale={BUILDING_SCALE}
     >
@@ -189,7 +193,7 @@ function MaterialItem({
   const t = loopTime - MATERIAL_START - index * MATERIAL_STAGGER;
   const active = t >= 0 && t <= MATERIAL_TRAVEL;
   const progress = THREE.MathUtils.clamp(t / MATERIAL_TRAVEL, 0, 1);
-  const x = -12 + 12 * progress;
+  const x = -13.2 + 18.6 * progress;
   const opacity = active ? Math.max(0, 1 - Math.max(0, progress - 0.72) / 0.28) : 0;
   const itemScale = scale * MODEL_SCALE_BOOST * (1 - progress * 0.58);
 
@@ -220,7 +224,7 @@ function FloorPlanItem({
   const t = loopTime - OUTPUT_START - index * OUTPUT_STAGGER;
   const active = t >= 0 && t <= OUTPUT_TRAVEL;
   const progress = THREE.MathUtils.clamp(t / OUTPUT_TRAVEL, 0, 1);
-  const x = -12 * progress;
+  const x = 5.4 - 18.6 * progress;
   const opacity = active ? Math.min(1, progress / 0.18) : 0;
   const itemScale = scale * MODEL_SCALE_BOOST * (0.18 + 0.82 * progress);
 
@@ -299,8 +303,11 @@ export default function HeroScene() {
         <div className="hero-loading-status">CONSTRUCTING {Math.round(progress * 100)}%</div>
       </div>
       <Canvas
-        gl={{ alpha: true, antialias: true, localClippingEnabled: true }}
-        camera={{ position: [0, 8, 18], fov: 40 }}
+        gl={{ alpha: true, antialias: true }}
+        onCreated={({ gl }) => {
+          gl.localClippingEnabled = true;
+        }}
+        camera={{ position: [0, 8.4, 23], fov: 39 }}
         style={{ width: '100%', height: '100%', background: 'transparent' }}
         dpr={[1, 2]}
       >
