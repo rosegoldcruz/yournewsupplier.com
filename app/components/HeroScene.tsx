@@ -155,7 +155,7 @@ function Building({ loopTime }: { loopTime: number }) {
   }, [clone, clipPlane]);
 
   useFrame(() => {
-    clipPlane.constant = -(BUILDING_Y + buildingTop * reveal);
+    clipPlane.constant = BUILDING_Y + buildingTop * reveal;
     if (group.current) {
       group.current.scale.setScalar(BUILDING_SCALE * pulse);
     }
@@ -285,15 +285,16 @@ OUT_PATHS.forEach((path) => useGLTF.preload(path));
 
 export default function HeroScene() {
   const [progress, setProgress] = useState(0);
-  const complete = progress >= 0.995;
+  const [loaderComplete, setLoaderComplete] = useState(false);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--hero-construction-progress', String(progress));
+    if (progress >= 0.995) setLoaderComplete(true);
   }, [progress]);
 
   return (
     <>
-      <div className={`hero-loading-screen${complete ? ' complete' : ''}`}>
+      <div className={`hero-loading-screen${loaderComplete ? ' complete' : ''}`}>
         <div className="hero-loading-wordmark">Vulpine<span>.</span></div>
         <div className="hero-loading-status">CONSTRUCTING {Math.round(progress * 100)}%</div>
       </div>
