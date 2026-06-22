@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
-const BUILDING_SCALE = 0.18872265;
-const BUILDING_Y = -4.85;
+const BUILDING_SCALE = 0.1038;
+const BUILDING_Y = -2.65;
 const BUILDING_ROTATION_Y = -0.48;
-const MODEL_SCALE_BOOST = 1.33;
+const MATERIAL_SCALE_BOOST = 3.45;
+const FLOOR_PLAN_SCALE_BOOST = 4.25;
 
 const IN_SCALES = [
   0.49891934,
@@ -56,7 +57,9 @@ const OUTPUT_PHASE = (OUT_PATHS.length - 1) * OUTPUT_STAGGER + OUTPUT_TRAVEL;
 const DECONSTRUCT_START = OUTPUT_START + OUTPUT_PHASE;
 const LOOP_DURATION = DECONSTRUCT_START + DECONSTRUCT_DURATION;
 
-const MATERIAL_Y = 0.85;
+const MATERIAL_Y = 0.95;
+const MATERIAL_Y_OFFSETS = [-1.15, -0.48, 0.24, 0.82];
+const FLOOR_PLAN_Y_OFFSETS = [-1.35, -0.48, 0.42, 1.2, -0.95];
 
 function easeConstruct(t: number) {
   return t < 0.82 ? t * 0.92 : 0.7544 + 0.2456 * Math.pow((t - 0.82) / 0.18, 1.35);
@@ -113,8 +116,8 @@ function CameraRig() {
   const { camera } = useThree();
 
   useEffect(() => {
-    camera.position.set(0, 8.4, 23);
-    camera.lookAt(1.8, -1.25, 0);
+    camera.position.set(0, 8.1, 23);
+    camera.lookAt(1.55, -0.85, 0);
     camera.updateProjectionMatrix();
   }, [camera]);
 
@@ -168,7 +171,7 @@ function Building({ loopTime }: { loopTime: number }) {
   return (
     <group
       ref={group}
-      position={[6.6, BUILDING_Y, -0.55]}
+      position={[6.55, BUILDING_Y, -0.55]}
       rotation={[0, BUILDING_ROTATION_Y, 0]}
       scale={BUILDING_SCALE}
     >
@@ -193,14 +196,15 @@ function MaterialItem({
   const t = loopTime - MATERIAL_START - index * MATERIAL_STAGGER;
   const active = t >= 0 && t <= MATERIAL_TRAVEL;
   const progress = THREE.MathUtils.clamp(t / MATERIAL_TRAVEL, 0, 1);
-  const x = -13.2 + 18.6 * progress;
+  const x = -7.8 + 13.4 * progress;
+  const y = MATERIAL_Y + MATERIAL_Y_OFFSETS[index % MATERIAL_Y_OFFSETS.length];
   const opacity = active ? Math.max(0, 1 - Math.max(0, progress - 0.72) / 0.28) : 0;
-  const itemScale = scale * MODEL_SCALE_BOOST * (1 - progress * 0.58);
+  const itemScale = scale * MATERIAL_SCALE_BOOST * (1 - progress * 0.36);
 
   useFrame(() => {
     if (!ref.current) return;
     ref.current.visible = active;
-    ref.current.position.set(x, MATERIAL_Y, 0);
+    ref.current.position.set(x, y, 0);
     ref.current.scale.setScalar(Math.max(0.01, itemScale));
     setOpacity(clone, opacity);
   });
@@ -224,14 +228,15 @@ function FloorPlanItem({
   const t = loopTime - OUTPUT_START - index * OUTPUT_STAGGER;
   const active = t >= 0 && t <= OUTPUT_TRAVEL;
   const progress = THREE.MathUtils.clamp(t / OUTPUT_TRAVEL, 0, 1);
-  const x = 5.4 - 18.6 * progress;
+  const x = 6.0 - 13.8 * progress;
+  const y = MATERIAL_Y + FLOOR_PLAN_Y_OFFSETS[index % FLOOR_PLAN_Y_OFFSETS.length];
   const opacity = active ? Math.min(1, progress / 0.18) : 0;
-  const itemScale = scale * MODEL_SCALE_BOOST * (0.18 + 0.82 * progress);
+  const itemScale = scale * FLOOR_PLAN_SCALE_BOOST * (0.26 + 0.74 * progress);
 
   useFrame(() => {
     if (!ref.current) return;
     ref.current.visible = active;
-    ref.current.position.set(x, MATERIAL_Y, 0);
+    ref.current.position.set(x, y, 0);
     ref.current.scale.setScalar(Math.max(0.01, itemScale));
     setOpacity(clone, opacity);
   });
@@ -241,9 +246,11 @@ function FloorPlanItem({
 
 function SceneContent({ onProgress }: { onProgress: (progress: number) => void }) {
   const [loopTime, setLoopTime] = useState(0);
+  const startTime = useRef<number | null>(null);
 
   useFrame(({ clock }) => {
-    const elapsed = clock.getElapsedTime();
+    if (startTime.current === null) startTime.current = clock.getElapsedTime();
+    const elapsed = clock.getElapsedTime() - startTime.current;
     const nextLoopTime = elapsed % LOOP_DURATION;
     setLoopTime(nextLoopTime);
     const constructProgress = nextLoopTime < CONSTRUCT_DURATION
@@ -261,31 +268,31 @@ function SceneContent({ onProgress }: { onProgress: (progress: number) => void }
       <ambientLight intensity={0.45} />
       <hemisphereLight args={['#F0E6D0', '#8B7355', 0.7]} />
       <Building loopTime={loopTime} />
-      {IN_PATHS.map((path, index) => (
-        <MaterialItem
-          key={path}
-          path={path}
-          index={index}
-          scale={IN_SCALES[index]}
-          loopTime={loopTime}
-        />
-      ))}
-      {OUT_PATHS.map((path, index) => (
-        <FloorPlanItem
-          key={path}
-          path={path}
-          index={index}
-          scale={OUT_SCALES[index]}
-          loopTime={loopTime}
-        />
-      ))}
+      <Suspense fallback={null}>
+        {IN_PATHS.map((path, index) => (
+          <MaterialItem
+            key={path}
+            path={path}
+            index={index}
+            scale={IN_SCALES[index]}
+            loopTime={loopTime}
+          />
+        ))}
+        {OUT_PATHS.map((path, index) => (
+          <FloorPlanItem
+            key={path}
+            path={path}
+            index={index}
+            scale={OUT_SCALES[index]}
+            loopTime={loopTime}
+          />
+        ))}
+      </Suspense>
     </>
   );
 }
 
 useGLTF.preload('/models/building.glb');
-IN_PATHS.forEach((path) => useGLTF.preload(path));
-OUT_PATHS.forEach((path) => useGLTF.preload(path));
 
 export default function HeroScene() {
   const [progress, setProgress] = useState(0);
@@ -298,16 +305,18 @@ export default function HeroScene() {
 
   return (
     <>
-      <div className={`hero-loading-screen${loaderComplete ? ' complete' : ''}`}>
-        <div className="hero-loading-wordmark">Vulpine<span>.</span></div>
-        <div className="hero-loading-status">CONSTRUCTING {Math.round(progress * 100)}%</div>
-      </div>
+      {!loaderComplete && (
+        <div className="hero-loading-screen">
+          <div className="hero-loading-wordmark">Vulpine<span>.</span></div>
+          <div className="hero-loading-status">CONSTRUCTING {Math.round(progress * 100)}%</div>
+        </div>
+      )}
       <Canvas
         gl={{ alpha: true, antialias: true }}
         onCreated={({ gl }) => {
           gl.localClippingEnabled = true;
         }}
-        camera={{ position: [0, 8.4, 23], fov: 39 }}
+        camera={{ position: [0, 8.1, 23], fov: 39 }}
         style={{ width: '100%', height: '100%', background: 'transparent' }}
         dpr={[1, 2]}
       >
